@@ -1,0 +1,111 @@
+{
+  "info": {
+    "name": "Chat Backend",
+    "description": "Run requests top to bottom: the 'Create user' requests and the create-chat/send-message requests save ids into collection variables.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000" },
+    { "key": "userA", "value": "" },
+    { "key": "userB", "value": "" },
+    { "key": "userC", "value": "" },
+    { "key": "chatId", "value": "" },
+    { "key": "groupId", "value": "" },
+    { "key": "messageId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Create user A",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.collectionVariables.set('userA', pm.response.json().data.id);"] } }],
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "url": "{{baseUrl}}/user", "body": { "mode": "raw", "raw": "{ \"name\": \"Alice\" }" } }
+        },
+        {
+          "name": "Create user B",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.collectionVariables.set('userB', pm.response.json().data.id);"] } }],
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "url": "{{baseUrl}}/user", "body": { "mode": "raw", "raw": "{ \"name\": \"Bob\" }" } }
+        },
+        {
+          "name": "Create user C",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.collectionVariables.set('userC', pm.response.json().data.id);"] } }],
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "url": "{{baseUrl}}/user", "body": { "mode": "raw", "raw": "{ \"name\": \"Charlie\" }" } }
+        }
+      ]
+    },
+    {
+      "name": "Required APIs",
+      "item": [
+        {
+          "name": "1. Create or get chat",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('2xx', () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));", "pm.collectionVariables.set('chatId', pm.response.json().data.chatId);"] } }],
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "url": "{{baseUrl}}/chat/create", "body": { "mode": "raw", "raw": "{ \"userAId\": \"{{userA}}\", \"userBId\": \"{{userB}}\" }" } }
+        },
+        {
+          "name": "2. Send message",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('201', () => pm.response.to.have.status(201));", "pm.collectionVariables.set('messageId', pm.response.json().data.id);"] } }],
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "url": "{{baseUrl}}/chat/{{chatId}}/message/send", "body": { "mode": "raw", "raw": "{ \"senderId\": \"{{userA}}\", \"text\": \"Hi Bob!\" }" } }
+        },
+        {
+          "name": "3. Get messages",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('200', () => pm.response.to.have.status(200));"] } }],
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/chat/{{chatId}}/messages?limit=50", "host": ["{{baseUrl}}"], "path": ["chat", "{{chatId}}", "messages"], "query": [{ "key": "limit", "value": "50" }] } }
+        },
+        {
+          "name": "4. Mark message read",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('200', () => pm.response.to.have.status(200));"] } }],
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "url": "{{baseUrl}}/chat/{{chatId}}/message/{{messageId}}/read", "body": { "mode": "raw", "raw": "{ \"userId\": \"{{userB}}\" }" } }
+        },
+        {
+          "name": "5. Update last seen",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('200', () => pm.response.to.have.status(200));"] } }],
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "url": "{{baseUrl}}/chat/{{chatId}}/lastseen", "body": { "mode": "raw", "raw": "{ \"userId\": \"{{userB}}\", \"messageId\": \"{{messageId}}\" }" } }
+        },
+        {
+          "name": "6. List user chats",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('200', () => pm.response.to.have.status(200));"] } }],
+          "request": { "method": "GET", "url": "{{baseUrl}}/user/{{userA}}/chats" }
+        }
+      ]
+    },
+    {
+      "name": "Bonus",
+      "item": [
+        {
+          "name": "Edit message",
+          "request": { "method": "PATCH", "header": [{ "key": "Content-Type", "value": "application/json" }], "url": "{{baseUrl}}/chat/{{chatId}}/message/{{messageId}}", "body": { "mode": "raw", "raw": "{ \"userId\": \"{{userA}}\", \"text\": \"Hi Bob (edited)\" }" } }
+        },
+        {
+          "name": "Delete message",
+          "request": { "method": "DELETE", "header": [{ "key": "Content-Type", "value": "application/json" }], "url": "{{baseUrl}}/chat/{{chatId}}/message/{{messageId}}", "body": { "mode": "raw", "raw": "{ \"userId\": \"{{userA}}\" }" } }
+        },
+        {
+          "name": "Get last seen states",
+          "request": { "method": "GET", "url": "{{baseUrl}}/chat/{{chatId}}/lastseen" }
+        },
+        {
+          "name": "Create group",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.collectionVariables.set('groupId', pm.response.json().data.id);"] } }],
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "url": "{{baseUrl}}/chat/group", "body": { "mode": "raw", "raw": "{ \"creatorId\": \"{{userA}}\", \"name\": \"Team\", \"memberIds\": [\"{{userB}}\"] }" } }
+        },
+        {
+          "name": "Rename group",
+          "request": { "method": "PATCH", "header": [{ "key": "Content-Type", "value": "application/json" }], "url": "{{baseUrl}}/chat/{{groupId}}", "body": { "mode": "raw", "raw": "{ \"requesterId\": \"{{userA}}\", \"name\": \"Core team\" }" } }
+        },
+        {
+          "name": "Add group members",
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "url": "{{baseUrl}}/chat/{{groupId}}/members", "body": { "mode": "raw", "raw": "{ \"requesterId\": \"{{userA}}\", \"userIds\": [\"{{userC}}\"] }" } }
+        },
+        {
+          "name": "Remove group member",
+          "request": { "method": "DELETE", "header": [{ "key": "Content-Type", "value": "application/json" }], "url": "{{baseUrl}}/chat/{{groupId}}/members/{{userC}}", "body": { "mode": "raw", "raw": "{ \"requesterId\": \"{{userA}}\" }" } }
+        },
+        {
+          "name": "Get chat details",
+          "request": { "method": "GET", "url": "{{baseUrl}}/chat/{{groupId}}" }
+        }
+      ]
+    }
+  ]
+}
