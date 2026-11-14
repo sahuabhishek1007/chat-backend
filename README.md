@@ -16,32 +16,142 @@ A chat backend that supports 1:1 chats, sending messages, strict message orderin
 | Validation | `zod`: every body, param and query is parsed and typed |
 | Tests | Vitest + Supertest against in-memory implementations of the storage interfaces |
 
-## Getting started
+## Quick check (no setup needed)
 
-You need Node.js 20+, a running MySQL server (5.6.5+ or 8.x) and a Firebase project with Firestore enabled.
+Run the full API test suite. It uses in-memory storage, so it needs no MySQL or Firebase:
 
 ```bash
-git clone <this-repo> && cd chat-backend
+git clone https://github.com/sahuabhishek1007/chat-backend.git
+cd chat-backend
 npm install
-cp .env.example .env     # set DATABASE_URL to your MySQL login (Windows: copy .env.example .env)
-#                          and put your Firebase key at ./service-account.json (see below)
-npm start                # http://localhost:5000
+npm test
 ```
 
-On startup, `npm start` builds the project, creates the database if it doesn't exist, and creates the tables. No separate migration step is needed. If something is missing, such as `.env`, the Firebase key or a working MySQL login, the app stops with a message saying what to fix.
+## How to run the project
 
-Optional:
-- `npm run seed` creates the demo users Alice, Bob and Charlie and prints their ids.
-- `npm run dev` runs the server with reload on change, for development.
-- If you don't have MySQL installed, run `docker compose up -d mysql` and use `DATABASE_URL=mysql://chat:chat@localhost:3306/chat`.
+### Step 1: Install the requirements
 
-### Firebase setup
+| Requirement | Version | Download |
+| --- | --- | --- |
+| Node.js | 20 or newer | https://nodejs.org (LTS) |
+| MySQL | 5.6.5+ or 8.x | https://dev.mysql.com/downloads/installer/ (or use Docker, see Step 4) |
+| A Firebase project | free Spark plan is enough | https://console.firebase.google.com |
 
-1. In the Firebase console, create a Firestore database.
-2. Go to **Project settings → Service accounts → Generate new private key** and save the file as `service-account.json` in the project root. It is git-ignored.
-3. Set `FIREBASE_PROJECT_ID` and `FIREBASE_SERVICE_ACCOUNT_PATH` in `.env`.
+To check Node.js, run `node -v`. It should print `v20` or higher.
 
-To work locally without a real project, run the Firestore emulator (`firebase emulators:start --only firestore`) and set `FIRESTORE_EMULATOR_HOST=localhost:8080`.
+### Step 2: Clone the repo and install packages
+
+```bash
+git clone https://github.com/sahuabhishek1007/chat-backend.git
+cd chat-backend
+npm install
+```
+
+### Step 3: Create the `.env` file
+
+Copy the template:
+
+```bash
+# Windows (cmd / PowerShell)
+copy .env.example .env
+
+# macOS / Linux
+cp .env.example .env
+```
+
+Open `.env` and fill it in:
+
+```env
+NODE_ENV=development
+PORT=5000
+
+# MySQL: mysql://<user>:<password>@<host>:<port>/<database>
+DATABASE_URL=mysql://root:yourpassword@localhost:3306/chat
+DB_POOL_MAX=10
+
+# Firebase
+FIREBASE_PROJECT_ID=your-firebase-project-id
+FIREBASE_SERVICE_ACCOUNT_PATH=./service-account.json
+FIRESTORE_EMULATOR_HOST=
+```
+
+- **DATABASE_URL:** use your own MySQL username and password. The database (`chat` above) doesn't need to exist; the app creates it. If the password contains `@ # : /`, URL-encode it (for example, `@` becomes `%40`).
+- **FIREBASE_PROJECT_ID:** your Firebase project ID. It's shown in Firebase console → Project settings → General.
+
+### Step 4: Set up MySQL
+
+Use either option.
+
+**A. MySQL already installed:** make sure the MySQL service is running and that the user/password in `DATABASE_URL` can log in. That's all; tables are created automatically in Step 6.
+
+**B. No MySQL, but you have Docker:**
+
+```bash
+docker compose up -d mysql
+```
+
+Then set this in `.env`:
+
+```env
+DATABASE_URL=mysql://chat:chat@localhost:3306/chat
+```
+
+### Step 5: Set up Firebase
+
+1. Open https://console.firebase.google.com and create a project, or open an existing one.
+2. In the left menu, click **Build → Firestore Database → Create database**. Pick any location and **Production mode**, then click **Create**.
+3. Click the **gear icon → Project settings → Service accounts** tab.
+4. Click **Generate new private key**, then **Generate key**. A `.json` file downloads.
+5. Rename it to `service-account.json` and put it in the project root, next to `package.json`.
+
+> ⚠️ `service-account.json` gives full access to your Firebase project. Never commit or share it. It is already in `.gitignore`.
+
+Not using a real Firebase project? Run the [Firestore emulator](https://firebase.google.com/docs/emulator-suite) (`firebase emulators:start --only firestore`) and set `FIRESTORE_EMULATOR_HOST=localhost:8080` in `.env`. You can then leave `FIREBASE_SERVICE_ACCOUNT_PATH` empty.
+
+### Step 6: Start the server
+
+```bash
+npm start
+```
+
+This builds the TypeScript, creates the MySQL database and tables if they don't exist, and starts the API. You should see:
+
+```
+[migrate] applied 001_init.sql
+Chat backend listening on http://localhost:5000
+```
+
+Open http://localhost:5000 in a browser. It shows `"status": "running"` and the list of endpoints.
+
+For development with reload on file changes, use `npm run dev` instead.
+
+### Step 7: Test the APIs with Postman
+
+1. Open Postman and click **Import** (or press Ctrl+O).
+2. Select `postman/chat-backend.postman_collection.json` from this repo.
+3. Open the **Chat Backend** collection and run the requests **top to bottom**:
+   - **Users** creates 3 users.
+   - **Required APIs 1–6** creates a chat, then sends, lists, marks read, updates last seen and lists chats.
+   - **Bonus** covers edit/delete messages and group chats.
+
+   To run everything in one go, click **⋯ → Run collection → Run Chat Backend**.
+
+You don't need to copy any ids by hand. Each request saves the ids it creates (users, chat, message) into collection variables, and later requests use them.
+
+Prefer the command line? Optionally run `npm run seed` to create the demo users Alice, Bob and Charlie and print their ids, then use the `curl` examples in [API](#api).
+
+### Troubleshooting
+
+| Message | Fix |
+| --- | --- |
+| `Could not read package.json` | Run the commands inside the `chat-backend` folder. |
+| `Invalid environment configuration … DATABASE_URL: Required` | The `.env` file is missing. Do Step 3. |
+| `Cannot reach MySQL` | MySQL isn't running, or the host/port in `DATABASE_URL` is wrong. |
+| `MySQL rejected the username/password` | Fix the user/password in `DATABASE_URL`. |
+| `Firebase key not found at …` | Put `service-account.json` in the project root (Step 5). |
+| `5 NOT_FOUND` from Firestore | The Firestore database hasn't been created in the Firebase console (Step 5.2). |
+| `EADDRINUSE :5000` | Port 5000 is busy. Change `PORT` in `.env`. |
+| Postman: `ECONNREFUSED` | The server isn't running. Run `npm start`. |
 
 `firestore.rules` denies all direct client access. Only this backend, through the Admin SDK, can read or write messages.
 
