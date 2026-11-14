@@ -1,5 +1,9 @@
-import 'dotenv/config';
+import dotenv from 'dotenv';
 import { z } from 'zod';
+
+// A root .env wins; key/.env is the fallback shipped with the repo so a fresh clone runs as-is.
+dotenv.config({ quiet: true });
+dotenv.config({ path: 'key/.env', quiet: true });
 
 /** Treat `FOO=` (empty string in .env) as "not set". */
 const optionalString = z.preprocess(

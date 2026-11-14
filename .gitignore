@@ -3,6 +3,9 @@ dist/
 coverage/
 .env
 *.log
-# Never commit Firebase credentials
+# Credentials are ignored everywhere except the key/ folder, which is committed on purpose
 service-account*.json
 firebase-adminsdk*.json
+!key/
+!key/.env
+!key/service-account.json

@@ -27,6 +27,19 @@ npm install
 npm test
 ```
 
+## Fastest way to run (using the bundled `key/` folder)
+
+The `key/` folder contains a ready-made `.env` and the Firebase `service-account.json`. The app reads `key/.env` automatically when there's no `.env` in the project root. If your MySQL login is different, edit `DATABASE_URL` in `key/.env`.
+
+```bash
+git clone https://github.com/sahuabhishek1007/chat-backend.git
+cd chat-backend
+npm install
+npm start
+```
+
+To use your own MySQL or Firebase instead, follow the steps below. A root `.env` always takes priority over `key/.env`.
+
 ## How to run the project
 
 ### Step 1: Install the requirements
